@@ -2,11 +2,898 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="refresh" content="0; url=stay-afloat/">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
   <title>Stay Afloat.</title>
-  <script>window.location.href = 'stay-afloat/';</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    .hidden { display: none !important; }
+    :root {
+      --surface: #ffffff;
+      --surface-2: #f8f9fa;
+      --text: #202124;
+      --text-secondary: #5f6368;
+      --primary: #1a73e8;
+      --primary-hover: #1765cc;
+      --success: #34a853;
+      --error: #ea4335;
+      --shadow: 0 1px 2px 0 rgba(60,64,67,.3), 0 1px 3px 1px rgba(60,64,67,.15);
+      --shadow-lg: 0 1px 3px 0 rgba(60,64,67,.3), 0 4px 8px 3px rgba(60,64,67,.15);
+      --radius: 16px;
+      --radius-sm: 12px;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Roboto', 'Segoe UI', system-ui, sans-serif;
+      background: var(--surface-2);
+      color: var(--text);
+      padding: 24px 16px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1.75rem;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+    .subtitle {
+      margin: 0 0 8px;
+      font-size: 0.9375rem;
+      color: var(--text-secondary);
+      max-width: 360px;
+      text-align: center;
+      line-height: 1.4;
+    }
+    .subtitle.instruction-top {
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .restart-hint {
+      margin: 8px 0 0;
+      font-size: 0.8125rem;
+      color: var(--text-secondary);
+      font-weight: 400;
+    }
+    .best-badge { margin-left: 0; }
+    .game-card {
+      width: 100%;
+      max-width: 640px;
+      padding: 20px;
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
+    }
+    .maze-viewport {
+      position: relative;
+      width: 100%;
+      height: min(36vh, 200px);
+      overflow: hidden;
+      border-radius: var(--radius-sm);
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.04);
+      transition: background 3.5s ease-in-out;
+      touch-action: manipulation;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .maze-viewport.theme-sky {
+      background: linear-gradient(180deg, #5dade2 0%, #85c1e9 25%, #aed6f1 55%, #d6eaf8 85%, #ebf5fb 100%);
+    }
+    .maze-viewport.theme-space {
+      background: linear-gradient(180deg, #0d0221 0%, #1a0533 20%, #2d1b4e 50%, #1a0533 80%, #0d0221 100%);
+      box-shadow: inset 0 0 80px rgba(100,50,180,0.15);
+    }
+    .maze-viewport.theme-jungle {
+      background: linear-gradient(180deg, #1b4332 0%, #2d6a4f 25%, #40916c 55%, #52b788 85%, #95d5b2 100%);
+    }
+    .maze-viewport.theme-ocean {
+      background: linear-gradient(180deg, #023e8a 0%, #0077b6 30%, #00b4d8 60%, #90e0ef 85%, #caf0f8 100%);
+    }
+    .maze-viewport.theme-road {
+      background: linear-gradient(180deg, #6c757d 0%, #495057 40%, #343a40 70%, #212529 100%);
+    }
+    .maze-viewport.theme-farm {
+      background: linear-gradient(180deg, #87ceeb 0%, #b0d4e8 35%, #daa520 65%, #8b4513 85%, #556b2f 100%);
+    }
+    .maze-strip {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      display: flex;
+      flex-direction: row;
+      will-change: transform;
+      gap: 0;
+    }
+    .maze-column {
+      flex-shrink: 0;
+      width: var(--col-width, 40px);
+      height: 100%;
+      display: grid;
+      grid-template-rows: repeat(9, 1fr);
+      gap: 3px;
+      padding: 3px 2px;
+    }
+    .maze-column .cell {
+      border-radius: 8px;
+      min-height: 0;
+    }
+    .cell.sky {
+      background: transparent;
+    }
+    .cell.cloud {
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .cell.cloud .obstacle-emoji { font-size: 1.5em; line-height: 1; filter: drop-shadow(0 1px 2px rgba(255,255,255,0.8)); }
+    .cell.plane, .cell.bird, .cell.other {
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .cell.plane .obstacle-emoji { font-size: 1.35em; line-height: 1; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2)); }
+    .cell.bird .obstacle-emoji { font-size: 1.25em; line-height: 1; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2)); }
+    .cell.other .obstacle-emoji { font-size: 1.35em; line-height: 1; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2)); }
+    .bee {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 36px;
+      height: 36px;
+      pointer-events: none;
+      z-index: 3;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      line-height: 1;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.12));
+      transform: scaleX(-1);
+      transition: transform 0.06s ease-out;
+    }
+    .game-footer {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 16px 24px;
+      margin-top: 20px;
+    }
+    .timer-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      background: var(--surface-2);
+      border-radius: 24px;
+      font-size: 0.9375rem;
+      color: var(--text-secondary);
+    }
+    #timer {
+      font-variant-numeric: tabular-nums;
+      font-weight: 600;
+      color: var(--text);
+    }
+    #message {
+      min-height: 1.5rem;
+      font-size: 0.9375rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+    #message.lose {
+      color: var(--error);
+    }
+    #newHighScoreMessage {
+      margin-top: 8px;
+      padding: 10px 16px;
+      background: linear-gradient(135deg, #34a853 0%, #2e7d32 100%);
+      color: #fff;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      border-radius: var(--radius-sm);
+      text-align: center;
+      box-shadow: var(--shadow);
+    }
+    #newHighScoreMessage.hidden {
+      display: none;
+    }
+    .btn-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .btn-row.hidden {
+      display: none;
+    }
+    .btn {
+      padding: 10px 24px;
+      font-size: 0.9375rem;
+      font-weight: 500;
+      font-family: inherit;
+      color: #fff;
+      border: none;
+      border-radius: 24px;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+      transition: background .15s, box-shadow .15s;
+    }
+    .btn-primary {
+      background: var(--primary);
+    }
+    .btn-primary:hover {
+      background: var(--primary-hover);
+      box-shadow: 0 1px 3px 0 rgba(60,64,67,.3), 0 2px 6px 2px rgba(60,64,67,.15);
+    }
+    #bestTimes {
+      margin-top: 28px;
+      padding: 20px 24px;
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      font-size: 0.9375rem;
+      max-width: 320px;
+    }
+    #bestTimes h3 {
+      margin: 0 0 12px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+    }
+    #bestTimes ol {
+      margin: 0;
+      padding-left: 1.25rem;
+      color: var(--text);
+    }
+    #bestTimes li {
+      margin-bottom: 6px;
+    }
+    #bestTimes .empty {
+      color: var(--text-secondary);
+      font-style: normal;
+    }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 16px 24px;
+      margin-bottom: 16px;
+      padding: 12px 16px;
+      background: var(--surface);
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow);
+      font-size: 0.8125rem;
+      color: var(--text-secondary);
+    }
+    .legend-item { display: flex; align-items: center; gap: 8px; }
+    .legend-item.safe { color: #2e7d32; font-weight: 500; }
+    .legend-item.avoid { color: #c62828; font-weight: 500; }
+    .legend-dot { width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0; }
+    .legend-dot.safe { font-size: 1.1em; line-height: 1; }
+    .legend-dot.avoid-plane { font-size: 1rem; line-height: 1; }
+    .legend-dot.avoid-bird { font-size: 1rem; line-height: 1; }
+    .legend-dot.avoid-other { font-size: 1rem; line-height: 1; }
+    .touch-controls {
+      display: none;
+      margin-top: 12px;
+      gap: 8px;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+    .touch-row { display: flex; gap: 12px; }
+    .touch-btn {
+      width: 56px;
+      height: 56px;
+      font-size: 1.5rem;
+      border-radius: 12px;
+      border: 2px solid var(--primary);
+      background: var(--surface);
+      color: var(--primary);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      user-select: none;
+    }
+    .touch-btn:active {
+      background: var(--primary);
+      color: #fff;
+    }
+    @media (max-width: 640px), (hover: none) {
+      .touch-controls { display: flex; }
+    }
+  </style>
 </head>
 <body>
-  <p>Redirecting to <a href="stay-afloat/">Stay Afloat game</a>…</p>
+  <h1>Stay Afloat.</h1>
+  <p class="subtitle instruction-top">Stay afloat as long as you can. The game gets harder over time.</p>
+  <p class="subtitle">Tap or click the game area to go <strong>up</strong>; use the arrow buttons for left/right. Or use keyboard arrows. Do not hit the ground or fly too high! When you lose, tap the game area to try again.</p>
+  <div class="legend" id="legend">
+    <span class="legend-item safe"><span class="legend-dot safe" id="legendSafe">☁️</span> <span id="legendSafeText">Safe</span></span>
+    <span class="legend-item avoid"><span class="legend-dot avoid-plane" id="legendAvoid1">✈️</span> <span id="legendAvoid1Text">—</span></span>
+    <span class="legend-item avoid"><span class="legend-dot avoid-bird" id="legendAvoid2">🐦</span> <span id="legendAvoid2Text">—</span></span>
+    <span class="legend-item avoid"><span class="legend-dot avoid-other" id="legendAvoid3">🪁</span> <span id="legendAvoid3Text">— avoid!</span></span>
+  </div>
+  <div class="game-card">
+    <div class="maze-viewport theme-ocean" id="mazeViewport">
+      <div class="maze-strip" id="mazeStrip"></div>
+      <div class="bee" id="bee">🐟</div>
+    </div>
+    <div class="touch-controls" id="touchControls" aria-label="Touch controls">
+      <button type="button" class="touch-btn touch-up" id="btnUp" aria-label="Fly up">↑</button>
+      <div class="touch-row">
+        <button type="button" class="touch-btn touch-left" id="btnLeft" aria-label="Move left">←</button>
+        <button type="button" class="touch-btn touch-right" id="btnRight" aria-label="Move right">→</button>
+      </div>
+    </div>
+    <div class="game-footer">
+      <div class="timer-badge">
+        <span>Time</span>
+        <span id="timer">0:00.0</span>
+      </div>
+      <div class="timer-badge best-badge">
+        <span>Best</span>
+        <span id="bestDisplay">—</span>
+      </div>
+      <div id="message"></div>
+      <div id="newHighScoreMessage" class="hidden"></div>
+      <div class="btn-row hidden" id="btnRowLose">
+        <button type="button" class="btn btn-primary" id="btnPlayAgain">Play again</button>
+        <p class="restart-hint">Press Enter or Space to restart</p>
+      </div>
+    </div>
+  </div>
+  <div id="bestTimes">
+    <h3>Top 5 longest runs</h3>
+    <ol id="bestTimesList"></ol>
+    <p class="empty" id="bestTimesEmpty">No runs yet. Stay afloat to get on the board!</p>
+  </div>
+
+  <script>
+    const ROWS = 9;
+    const NUM_COLUMNS = 30;
+    const COLUMN_WIDTH_PX = 40;
+    const BEE_WIDTH_PX = 36;
+    const BEE_HORIZONTAL_SPEED = 180;
+    const BASE_SCROLL_SPEED = 72;
+    const GRAVITY_PX_PER_SEC = 105;
+    const LIFT_PX_PER_SEC = 550;
+    const VIEWPORT_HEIGHT_PX = 200;
+    const BEE_HEIGHT_PX = 36;
+    const MAX_BEE_Y = VIEWPORT_HEIGHT_PX - BEE_HEIGHT_PX;
+    const ROW_HEIGHT_PX = VIEWPORT_HEIGHT_PX / ROWS;
+    const BEST_TIMES_KEY = 'bee-fly-best-times';
+    const MAX_BEST_TIMES = 5;
+
+    const OBSTACLE_SKY = 0;
+    const OBSTACLE_CLOUD = 1;
+    const OBSTACLE_PLANE = 2;
+    const OBSTACLE_BIRD = 3;
+    const OBSTACLE_OTHER = 4;
+
+    function isDeadlyObstacle(type) {
+      return type === OBSTACLE_PLANE || type === OBSTACLE_BIRD || type === OBSTACLE_OTHER;
+    }
+
+    let columns = [];
+    let columnDivs = [];
+    let beeX = 80;
+    let beeY = VIEWPORT_HEIGHT_PX / 2 - BEE_HEIGHT_PX / 2;
+    let beeVelY = 0;
+    let upHeld = false;
+    let leftHeld = false;
+    let rightHeld = false;
+    let gameState = 'playing';
+    let timerStart = null;
+    let timerElapsed = 0;
+    let timerId = null;
+    let scrollOffsetPx = 0;
+    let lastFrameTime = 0;
+    let rafId = null;
+    const OCEAN_THEME = 3;
+    let currentTheme = OCEAN_THEME;
+
+    function generateColumn() {
+      const col = Array(ROWS).fill(OBSTACLE_SKY);
+      const r = Math.random();
+      const obstacleCount = r < 0.55 ? 0 : (r < 0.88 ? 1 : 2);
+      if (obstacleCount === 0) return col;
+      const indices = [];
+      for (let i = 0; i < ROWS; i++) indices.push(i);
+      for (let i = indices.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [indices[i], indices[j]] = [indices[j], indices[i]];
+      }
+      const types = [OBSTACLE_CLOUD, OBSTACLE_CLOUD, OBSTACLE_PLANE, OBSTACLE_BIRD, OBSTACLE_OTHER];
+      for (let k = 0; k < obstacleCount && k < indices.length; k++) {
+        col[indices[k]] = types[Math.floor(Math.random() * types.length)];
+      }
+      return col;
+    }
+
+    function initColumns() {
+      columns = [];
+      for (let i = 0; i < NUM_COLUMNS; i++) {
+        columns.push(generateColumn());
+      }
+      const playerColIndex = Math.floor(beeX / COLUMN_WIDTH_PX) % NUM_COLUMNS;
+      const startRow = Math.min(ROWS - 1, Math.floor(beeY / ROW_HEIGHT_PX));
+      columns[playerColIndex][startRow] = OBSTACLE_SKY;
+    }
+
+    function startTimer() {
+      if (timerStart !== null) return;
+      timerStart = Date.now();
+      timerId = setInterval(updateTimerDisplay, 100);
+    }
+
+    function stopTimer() {
+      if (timerId !== null) {
+        clearInterval(timerId);
+        timerId = null;
+      }
+      if (timerStart !== null) {
+        timerElapsed = (Date.now() - timerStart) / 1000;
+      }
+      timerStart = null;
+      updateTimerDisplay();
+    }
+
+    function updateBestDisplay() {
+      const el = document.getElementById('bestDisplay');
+      if (!el) return;
+      const times = getBestTimes();
+      if (times.length === 0) el.textContent = '—';
+      else el.textContent = times[0].seconds.toFixed(1) + 's';
+    }
+
+    function updateTimerDisplay() {
+      const el = document.getElementById('timer');
+      let secs = timerElapsed;
+      if (timerStart !== null) secs = (Date.now() - timerStart) / 1000;
+      const m = Math.floor(secs / 60);
+      const s = (secs % 60).toFixed(1);
+      el.textContent = m + ':' + (s.length === 3 ? s : '0' + s);
+      updateBestDisplay();
+    }
+
+    function resetTimer() {
+      timerStart = null;
+      timerElapsed = 0;
+      if (timerId !== null) {
+        clearInterval(timerId);
+        timerId = null;
+      }
+      updateTimerDisplay();
+    }
+
+    function getBestTimes() {
+      try {
+        const raw = localStorage.getItem(BEST_TIMES_KEY);
+        if (!raw) return [];
+        const arr = JSON.parse(raw);
+        if (!Array.isArray(arr)) return [];
+        return arr.slice(0, MAX_BEST_TIMES).map(entry => {
+          if (typeof entry === 'number') return { seconds: entry, country: null };
+          return { seconds: entry.seconds, country: entry.country || null };
+        });
+      } catch {
+        return [];
+      }
+    }
+
+    function saveBestTimes(times) {
+      try {
+        localStorage.setItem(BEST_TIMES_KEY, JSON.stringify(times.slice(0, MAX_BEST_TIMES)));
+      } catch (_) {}
+    }
+
+    function countryToFlag(countryCode) {
+      if (!countryCode || countryCode.length !== 2) return '\uD83C\uDF0D';
+      const c1 = countryCode.charCodeAt(0);
+      const c2 = countryCode.charCodeAt(1);
+      if (c1 < 65 || c1 > 90 || c2 < 65 || c2 > 90) return '\uD83C\uDF0D';
+      return String.fromCodePoint(0x1F1E6 + c1 - 65, 0x1F1E6 + c2 - 65);
+    }
+
+    function fetchCountryCode() {
+      return fetch('https://ip-api.com/json/?fields=countryCode')
+        .then(r => r.json())
+        .then(data => data.countryCode || null)
+        .catch(() => null);
+    }
+
+    function addBestTime(seconds) {
+      fetchCountryCode().then(country => {
+        const times = getBestTimes();
+        times.push({ seconds, country });
+        times.sort((a, b) => b.seconds - a.seconds);
+        saveBestTimes(times);
+        renderBestTimes();
+        updateBestDisplay();
+      });
+    }
+
+    function renderBestTimes() {
+      const times = getBestTimes();
+      const listEl = document.getElementById('bestTimesList');
+      const emptyEl = document.getElementById('bestTimesEmpty');
+      listEl.innerHTML = '';
+      if (times.length === 0) {
+        emptyEl.classList.remove('hidden');
+        return;
+      }
+      emptyEl.classList.add('hidden');
+      times.forEach((entry) => {
+        const li = document.createElement('li');
+        li.textContent = countryToFlag(entry.country) + ' ' + entry.seconds.toFixed(1) + 's';
+        listEl.appendChild(li);
+      });
+    }
+
+    const THEMES = [
+      { id: 'sky',    player: '🐝',  cloud: '☁️', plane: '✈️', bird: '🐦', other: '🪁', safeLabel: 'Safe', avoidLabels: ['Plane', 'Bird', 'Kite'] },
+      { id: 'space',  player: '🚀',  cloud: '☁️', plane: '🛸', bird: '🌑', other: '☄️', safeLabel: 'Safe', avoidLabels: ['UFO', 'Asteroid', 'Comet'] },
+      { id: 'jungle', player: '🐵',  cloud: '🌿', plane: '🦜', bird: '🐍', other: '🦁', safeLabel: 'Safe', avoidLabels: ['Parrot', 'Snake', 'Lion'] },
+      { id: 'ocean',  player: '🐟',  cloud: '🌊', plane: '🛳️', bird: '🦈', other: '🐙', safeLabel: 'Safe', avoidLabels: ['Ship', 'Shark', 'Octopus'] },
+      { id: 'road',   player: '🚗',  cloud: '🌫️', plane: '🚚', bird: '🦅', other: '🚧', safeLabel: 'Safe', avoidLabels: ['Truck', 'Eagle', 'Construction'] },
+      { id: 'farm',   player: '🐴',  cloud: '☁️', plane: '🚜', bird: '🐔', other: '🐄', safeLabel: 'Safe', avoidLabels: ['Tractor', 'Chicken', 'Cow'] }
+    ];
+    let themeSequence = [];
+
+    function shuffleThemes() {
+      themeSequence = [0, 1, 2, 3, 4, 5];
+      for (let i = themeSequence.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [themeSequence[i], themeSequence[j]] = [themeSequence[j], themeSequence[i]];
+      }
+    }
+
+    function obstacleClass(type) {
+      if (type === OBSTACLE_CLOUD) return 'cloud';
+      if (type === OBSTACLE_PLANE) return 'plane';
+      if (type === OBSTACLE_BIRD) return 'bird';
+      if (type === OBSTACLE_OTHER) return 'other';
+      return 'sky';
+    }
+
+    function obstacleEmoji(type, themeId) {
+      const t = THEMES[themeId] || THEMES[0];
+      if (type === OBSTACLE_CLOUD) return t.cloud;
+      if (type === OBSTACLE_PLANE) return t.plane;
+      if (type === OBSTACLE_BIRD) return t.bird;
+      if (type === OBSTACLE_OTHER) return t.other;
+      return '';
+    }
+
+    function setCellContent(cell, type) {
+      const cls = obstacleClass(type);
+      cell.className = 'cell ' + cls;
+      const emoji = obstacleEmoji(type, currentTheme);
+      if (emoji) {
+        cell.innerHTML = '<span class="obstacle-emoji">' + emoji + '</span>';
+      } else {
+        cell.innerHTML = '';
+      }
+    }
+
+    function getScrollSpeed(elapsedSec) {
+      return BASE_SCROLL_SPEED * Math.pow(1.15, 1 + Math.floor(elapsedSec / 5));
+    }
+
+    function updateLegend(themeId) {
+      const t = THEMES[themeId] || THEMES[0];
+      const safe = document.getElementById('legendSafe');
+      const safeText = document.getElementById('legendSafeText');
+      const a1 = document.getElementById('legendAvoid1');
+      const a1Text = document.getElementById('legendAvoid1Text');
+      const a2 = document.getElementById('legendAvoid2');
+      const a2Text = document.getElementById('legendAvoid2Text');
+      const a3 = document.getElementById('legendAvoid3');
+      const a3Text = document.getElementById('legendAvoid3Text');
+      if (safe) safe.textContent = t.cloud;
+      if (safeText) safeText.textContent = t.safeLabel;
+      if (a1) a1.textContent = t.plane;
+      if (a1Text) a1Text.textContent = t.avoidLabels[0] || '';
+      if (a2) a2.textContent = t.bird;
+      if (a2Text) a2Text.textContent = t.avoidLabels[1] || '';
+      if (a3) a3.textContent = t.other;
+      if (a3Text) a3Text.textContent = (t.avoidLabels[2] || '') + ' — avoid!';
+    }
+
+    function applyTheme(themeId) {
+      currentTheme = themeId;
+      const t = THEMES[themeId] || THEMES[0];
+      const vp = document.getElementById('mazeViewport');
+      const playerEl = document.getElementById('bee');
+      vp.classList.remove('theme-sky', 'theme-space', 'theme-jungle', 'theme-ocean', 'theme-road', 'theme-farm');
+      vp.classList.add('theme-' + t.id);
+      playerEl.textContent = t.player;
+      updateLegend(themeId);
+      updateStripFromColumns();
+    }
+
+    function buildMazeStrip() {
+      const strip = document.getElementById('mazeStrip');
+      strip.innerHTML = '';
+      columnDivs = [];
+      for (let c = 0; c < NUM_COLUMNS; c++) {
+        const colDiv = document.createElement('div');
+        colDiv.className = 'maze-column';
+        colDiv.style.setProperty('--col-width', COLUMN_WIDTH_PX + 'px');
+        for (let r = 0; r < ROWS; r++) {
+          const cell = document.createElement('div');
+          cell.dataset.row = r;
+          setCellContent(cell, columns[c] ? columns[c][r] : OBSTACLE_SKY);
+          colDiv.appendChild(cell);
+        }
+        strip.appendChild(colDiv);
+        columnDivs.push(colDiv);
+      }
+      strip.style.width = (NUM_COLUMNS * COLUMN_WIDTH_PX) + 'px';
+    }
+
+    function updateStripFromColumns() {
+      const strip = document.getElementById('mazeStrip');
+      if (!strip) return;
+      for (let i = 0; i < strip.children.length && i < NUM_COLUMNS; i++) {
+        const colDiv = strip.children[i];
+        if (!colDiv || !columns[i]) continue;
+        const cells = colDiv.querySelectorAll('.cell');
+        for (let r = 0; r < ROWS; r++) {
+          if (cells[r]) setCellContent(cells[r], columns[i][r]);
+        }
+      }
+    }
+
+    function getMaxBeeX() {
+      const vp = document.getElementById('mazeViewport');
+      return vp ? Math.max(0, vp.clientWidth - BEE_WIDTH_PX) : 600;
+    }
+
+    function updateBeePosition() {
+      const beeEl = document.getElementById('bee');
+      const maxX = getMaxBeeX();
+      beeX = Math.max(0, Math.min(maxX, beeX));
+      beeEl.style.top = Math.max(0, Math.min(beeY, MAX_BEE_Y)) + 'px';
+      beeEl.style.left = beeX + 'px';
+    }
+
+    function tick(timestamp) {
+      if (gameState !== 'playing') return;
+      const dt = lastFrameTime ? Math.min((timestamp - lastFrameTime) / 1000, 0.1) : 0;
+      lastFrameTime = timestamp;
+
+      if (upHeld) {
+        beeVelY -= LIFT_PX_PER_SEC * dt;
+      } else {
+        beeVelY += GRAVITY_PX_PER_SEC * dt;
+      }
+      beeVelY = Math.max(-400, Math.min(400, beeVelY));
+      beeY += beeVelY * dt;
+      beeY = Math.max(0, Math.min(MAX_BEE_Y, beeY));
+
+      if (leftHeld) beeX -= BEE_HORIZONTAL_SPEED * dt;
+      if (rightHeld) beeX += BEE_HORIZONTAL_SPEED * dt;
+      beeX = Math.max(0, Math.min(getMaxBeeX(), beeX));
+
+      if (beeY >= MAX_BEE_Y) {
+        loseGame('ground');
+        return;
+      }
+      if (beeY <= 0) {
+        loseGame('ceiling');
+        return;
+      }
+
+      const elapsed = timerStart != null ? (Date.now() - timerStart) / 1000 : 0;
+
+      const scrollSpeed = getScrollSpeed(elapsed);
+      scrollOffsetPx += scrollSpeed * dt;
+      while (scrollOffsetPx >= COLUMN_WIDTH_PX) {
+        scrollOffsetPx -= COLUMN_WIDTH_PX;
+        columns.shift();
+        columns.push(generateColumn());
+        const strip = document.getElementById('mazeStrip');
+        const firstCol = strip.firstElementChild;
+        if (firstCol) {
+          strip.removeChild(firstCol);
+          const newData = columns[NUM_COLUMNS - 1];
+          for (let r = 0; r < ROWS; r++) {
+            setCellContent(firstCol.children[r], newData[r]);
+          }
+          strip.appendChild(firstCol);
+        }
+      }
+
+      document.getElementById('mazeStrip').style.transform = 'translateX(' + (-scrollOffsetPx) + 'px)';
+      updateBeePosition();
+
+      if (elapsed < 2) {
+        rafId = requestAnimationFrame(tick);
+        return;
+      }
+      const beeLeft = beeX;
+      const beeRight = beeX + BEE_WIDTH_PX;
+      const beeTop = beeY;
+      const beeBottom = beeY + BEE_HEIGHT_PX;
+      const colStart = Math.max(0, Math.min(NUM_COLUMNS - 1, Math.floor((beeLeft + scrollOffsetPx) / COLUMN_WIDTH_PX)));
+      const colEnd = Math.max(0, Math.min(NUM_COLUMNS - 1, Math.floor((beeRight - 0.01 + scrollOffsetPx) / COLUMN_WIDTH_PX)));
+      const INSET_X = 10;
+      const INSET_Y = 4;
+      const MIN_OVERLAP = 3;
+      for (let i = colStart; i <= colEnd; i++) {
+        const cellLeft = i * COLUMN_WIDTH_PX - scrollOffsetPx;
+        const cellRight = (i + 1) * COLUMN_WIDTH_PX - scrollOffsetPx;
+        for (let row = 0; row < ROWS; row++) {
+          if (!isDeadlyObstacle(columns[i] ? columns[i][row] : OBSTACLE_SKY)) continue;
+          const cellTop = row * ROW_HEIGHT_PX;
+          const cellBottom = (row + 1) * ROW_HEIGHT_PX;
+          const oL = Math.max(beeLeft, cellLeft + INSET_X);
+          const oR = Math.min(beeRight, cellRight - INSET_X);
+          const oT = Math.max(beeTop, cellTop + INSET_Y);
+          const oB = Math.min(beeBottom, cellBottom - INSET_Y);
+          if (oR > oL && oB > oT && (oR - oL) >= MIN_OVERLAP && (oB - oT) >= MIN_OVERLAP) {
+            loseGame();
+            return;
+          }
+        }
+      }
+
+      rafId = requestAnimationFrame(tick);
+    }
+
+    function startScroll() {
+      if (rafId !== null) return;
+      lastFrameTime = 0;
+      rafId = requestAnimationFrame(tick);
+    }
+
+    function stopScroll() {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+    }
+
+    function hideAllButtons() {
+      document.getElementById('btnRowLose').classList.add('hidden');
+    }
+
+    function loseGame(reason) {
+      gameState = 'lost';
+      stopTimer();
+      stopScroll();
+      const msg = reason === 'ground' ? 'You hit the ground!' : (reason === 'ceiling' ? 'You flew too high!' : 'You hit an obstacle!');
+      document.getElementById('message').textContent = msg + ' You stayed in the sky for ' + timerElapsed.toFixed(1) + 's';
+      document.getElementById('message').classList.add('lose');
+      document.getElementById('btnRowLose').classList.remove('hidden');
+      const highScoreEl = document.getElementById('newHighScoreMessage');
+      highScoreEl.classList.add('hidden');
+      if (timerElapsed > 0) {
+        const times = getBestTimes();
+        const isNewHigh = times.length < MAX_BEST_TIMES || timerElapsed > times[times.length - 1].seconds;
+        if (isNewHigh) {
+          highScoreEl.textContent = '🏆 New high score! You made the leaderboard!';
+          highScoreEl.classList.remove('hidden');
+        }
+        addBestTime(timerElapsed);
+      }
+    }
+
+    function playAgain() {
+      gameState = 'playing';
+      beeX = 80;
+      beeY = VIEWPORT_HEIGHT_PX / 2 - BEE_HEIGHT_PX / 2;
+      beeVelY = 0;
+      upHeld = false;
+      leftHeld = false;
+      rightHeld = false;
+      scrollOffsetPx = 0;
+      currentTheme = OCEAN_THEME;
+      initColumns();
+      document.getElementById('message').textContent = '';
+      document.getElementById('message').classList.remove('lose');
+      document.getElementById('newHighScoreMessage').classList.add('hidden');
+      hideAllButtons();
+      resetTimer();
+      stopScroll();
+      buildMazeStrip();
+      applyTheme(currentTheme);
+      updateBeePosition();
+      document.getElementById('mazeStrip').style.transform = 'translateX(0)';
+      startTimer();
+      startScroll();
+    }
+
+    document.getElementById('btnPlayAgain').addEventListener('click', playAgain);
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === ' ' || e.key === 'Enter') {
+        if (gameState === 'lost') {
+          e.preventDefault();
+          playAgain();
+        }
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        upHeld = true;
+        if (gameState === 'playing') {
+          startTimer();
+          startScroll();
+        }
+      }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); leftHeld = true; }
+      if (e.key === 'ArrowRight') { e.preventDefault(); rightHeld = true; }
+    });
+    document.addEventListener('keyup', (e) => {
+      if (e.key === 'ArrowUp') upHeld = false;
+      if (e.key === 'ArrowLeft') leftHeld = false;
+      if (e.key === 'ArrowRight') rightHeld = false;
+    });
+
+    currentTheme = OCEAN_THEME;
+    initColumns();
+    renderBestTimes();
+    updateBestDisplay();
+    buildMazeStrip();
+    applyTheme(currentTheme);
+    updateBeePosition();
+    startTimer();
+    startScroll();
+
+    document.getElementById('btnUp').addEventListener('mousedown', () => { upHeld = true; if (gameState === 'playing') { startTimer(); startScroll(); } });
+    document.getElementById('btnUp').addEventListener('mouseup', () => upHeld = false);
+    document.getElementById('btnUp').addEventListener('mouseleave', () => upHeld = false);
+    document.getElementById('btnUp').addEventListener('touchstart', (e) => { e.preventDefault(); upHeld = true; if (gameState === 'playing') { startTimer(); startScroll(); } });
+    document.getElementById('btnUp').addEventListener('touchend', (e) => { e.preventDefault(); upHeld = false; });
+    document.getElementById('btnLeft').addEventListener('mousedown', () => leftHeld = true);
+    document.getElementById('btnLeft').addEventListener('mouseup', () => leftHeld = false);
+    document.getElementById('btnLeft').addEventListener('mouseleave', () => leftHeld = false);
+    document.getElementById('btnLeft').addEventListener('touchstart', (e) => { e.preventDefault(); leftHeld = true; });
+    document.getElementById('btnLeft').addEventListener('touchend', (e) => { e.preventDefault(); leftHeld = false; });
+    document.getElementById('btnRight').addEventListener('mousedown', () => rightHeld = true);
+    document.getElementById('btnRight').addEventListener('mouseup', () => rightHeld = false);
+    document.getElementById('btnRight').addEventListener('mouseleave', () => rightHeld = false);
+    document.getElementById('btnRight').addEventListener('touchstart', (e) => { e.preventDefault(); rightHeld = true; });
+    document.getElementById('btnRight').addEventListener('touchend', (e) => { e.preventDefault(); rightHeld = false; });
+
+    function viewportPointerDown(e) {
+      if (gameState === 'lost') {
+        playAgain();
+        return;
+      }
+      upHeld = true;
+      if (gameState === 'playing') { startTimer(); startScroll(); }
+    }
+    function viewportPointerUp() {
+      upHeld = false;
+      leftHeld = false;
+      rightHeld = false;
+    }
+    const vp = document.getElementById('mazeViewport');
+    if (vp) {
+      vp.addEventListener('mousedown', (e) => { e.preventDefault(); viewportPointerDown(e); });
+      vp.addEventListener('touchstart', (e) => { e.preventDefault(); viewportPointerDown(e); }, { passive: false });
+    }
+    document.addEventListener('mouseup', viewportPointerUp);
+    document.addEventListener('touchend', viewportPointerUp);
+    document.addEventListener('touchcancel', viewportPointerUp);
+  </script>
 </body>
 </html>
